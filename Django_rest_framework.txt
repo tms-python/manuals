@@ -1,0 +1,125 @@
+устанавливаем  DRF
+
+pip install djangorestframework
+#######################################################################################################################
+в каталоге нашегоприложения создаем каталог api
+
+shop_app
+  api
+    serializers.py
+    urls.py
+    views.py
+
+#######################################################################################################################
+в файле urls.py приложения подключаем urls.py из каталога api
+
+urlpatterns = [
+    ........
+    path('api/', include('shop_app.api.urls')),
+]
+
+#######################################################################################################################
+в файле serializers.py создаем сериализаторы для наших моделей
+
+
+from rest_framework import serializers
+
+from ..models import (
+    Department,
+    Item,
+)
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    sphere_name = serializers.SerializerMethodField()
+
+    def get_sphere_name(self, obj: Department):
+        return obj.get_sphere_display()
+
+    class Meta:
+        model = Department
+        fields = (
+            'id',
+            'sphere',
+            'sphere_name',
+            'staff_amount',
+            'shop',
+        )  # можно указать отдельные поля
+        #  ('id', 'some_field', ......)
+
+
+class ItemSerializer(serializers.ModelSerializer):
+    department_obj = DepartmentSerializer(
+        source='department',
+        read_only=True,
+    )
+
+    class Meta:
+        model = Item
+        fields = '__all__'
+
+#######################################################################################################################
+в файле views.py создаем viewsets для наших моделей
+
+
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
+
+from .serializers import (
+    DepartmentSerializer,
+    ItemSerializer
+)
+
+from ..models import (
+    Department,
+    Item
+)
+
+
+class DepartmentViewSet(ModelViewSet):
+    queryset = Department.objects.filter(is_delete=False)
+    # queryset = Department.objects.all()
+    serializer_class = DepartmentSerializer
+
+    def list(self, request, *args, **kwargs):
+        print('HI i am list method')
+        return super(DepartmentViewSet, self).list(request, *args, **kwargs)
+
+    @action(methods=['get'], detail=False)
+    def all_instances(self, request, *args, **kwargs):
+        queryset = Department.objects.all()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    # def retrieve(self, request, *args, **kwargs):  #  получение отдельной объект
+    # def create(self, request, *args, **kwargs):    #  создание сущности объекта
+    # def update(self, request, *args, **kwargs):    #  обновление объекта
+    # def destroy(self, request, *args, **kwargs):   #  удаление объекта
+
+
+class ItemViewSet(ModelViewSet):
+    queryset = Item.objects.all()
+    # queryset = Department.objects.all()
+    serializer_class = ItemSerializer
+
+
+#######################################################################################################################
+регистрируем созданные viewsets в urls.py
+
+from rest_framework import routers
+from django.conf.urls import include
+from django.urls import path
+
+from . import views
+
+router = routers.DefaultRouter()
+router.register('department', views.DepartmentViewSet)
+router.register('item', views.ItemViewSet)
+
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+
+#######################################################################################################################

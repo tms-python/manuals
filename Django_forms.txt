@@ -1,0 +1,195 @@
+Немного про crispy
+https://django.fun/tutorials/django-i-formy-bootstrap-4/
+#######################################################################################################################
+
+устанавливаем приложение crispy
+
+pip install django-crispy-forms
+
+#######################################################################################################################
+добавляем в базовый темплейт загрузку стилей и js bootstrap
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+
+#######################################################################################################################
+
+
+
+регистрируем в settings.py нашего проекта:
+
+
+INSTALLED_APPS = [
+    ........
+
+    'crispy_forms',
+
+    .......
+]
+
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
+#######################################################################################################################
+
+в каталоге нашего приложения создаем файл forms.py
+
+
+from django import forms
+from .models import Student
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Submit
+
+
+class StudentForm(forms.ModelForm):
+
+    class Meta:
+        model = Student
+        fields = '__all__'
+        # fields = (
+        #     'id',
+        #     'name',
+        # )
+        # exclude = (
+        #     ''
+        # )
+
+    def __init__(self, *args, **kwargs):
+        super(StudentForm, self).__init__(*args, **kwargs)
+
+        self.helper = FormHelper()
+        self.helper.add_input(
+            Submit('submit', 'Сохранить студента')
+        )
+
+#######################################################################################################################
+
+view для создания и обновления объекта
+
+
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseNotFound, HttpResponseNotAllowed
+from django.core.exceptions import ObjectDoesNotExist
+from django.shortcuts import render
+from django.urls import reverse
+
+from .models import Student
+from .forms import StudentForm
+
+def create_student(request):
+    if request.method == 'GET':
+        student_form = StudentForm()
+        return render(
+            request,
+            'my_app/create_student.html',
+            context={'student_form': student_form}
+        )
+    elif request.method == 'POST':
+        student_form = StudentForm(request.POST)
+        if student_form.is_valid():
+            student_form.save(commit=True)
+            return HttpResponseRedirect(
+                reverse('my_app:get_all_students')
+            )
+        else:
+            return render(
+                request,
+                'my_app/create_student.html',
+                context={
+                    'student_form': student_form,
+                    'message': 'Не верные данные в форме'
+                }
+            )
+
+
+def edit_student(request, student_id):
+    if request.method == 'GET':
+        try:
+            # получаем из базы студента по его id
+            student = Student.objects.get(id=student_id)
+            # создаем форму для студента и заполняем ее данными полученными из БД
+            student_form = StudentForm(instance=student)
+            # возвращаем форму в шаблон
+            return render(request, 'my_app/edit_student.html', context={'student_form': student_form}
+            )
+        # если передан не верный ID, будет вызвано исключение ObjectDoesNotExist
+        except ObjectDoesNotExist:
+            # Возвращаем ответ с кодом 404
+            return HttpResponseNotFound('Student not found')
+    elif request.method == 'POST':
+        try:
+            # получаем из базы студента по его id
+            student = Student.objects.get(id=student_id)
+            # создаем форму для студента и заполняем ее данными полученными из БД
+            student_form = StudentForm(instance=student, data=request.POST)
+            if student_form.is_valid():
+                student_form.save(commit=True)
+                return render(request, 'my_app/edit_student.html', {'student_form': student_form, 'message': 'Saved'})
+            else:
+                return render(request, 'my_app/edit_student.html',
+                              context={'student_form': student_form,
+                                       'message': 'Не верные данные в форме'}
+                              )
+        # если передан не верный ID, будет вызвано исключение ObjectDoesNotExist
+        except ObjectDoesNotExist:
+            # Возвращаем ответ с кодом 404
+            return HttpResponseNotFound('Student not found')
+    else:
+        # В случае если метод запроса не GET или POST Возвращаем ответ с кодом 405 Method Not Allowed
+        return HttpResponseNotAllowed(('GET', 'POST'))
+
+
+#######################################################################################################################
+
+добавляем пути в urls.py
+
+urlpatterns = [
+    path('create_student/', create_student, name='create_student'),
+    path('edit_student/<int:student_id>/', edit_student, name='edit_student'),
+]
+
+
+#######################################################################################################################
+template create_student.html
+
+{% extends 'my_app/base.html' %}
+{% load crispy_forms_tags %}  # подключаем crispy к шаблону
+{% block body %}
+
+  <div class="col-lg-6 offset-3">
+    {% if message %}
+      {{ message }}
+    {% endif %}
+    {% crispy student_form %}  <!-- передаем в crispy нашу форму -->
+  </div>
+
+{% endblock %}
+
+#######################################################################################################################
+Базовый вариант теплейта без crispy
+
+  Создание нового студента
+  {{ message }}
+  <form action="{% url 'my_app:create_student' %}"
+  method="post">
+    {% csrf_token %}
+    {{ student_form.as_p }}
+    <button type="submit">Сохранить</button>
+  </form>
+  <form action="{% url 'my_app:create_student' %}" method="post">
+  {% csrf_token %}
+  <label for="name">Имя</label>
+  <input id="name" name="name" type="text">
+  <label for="course">Курс</label>
+  <input id="course" name="course" type="number">
+  <button type="submit">Сохранить</button>
+  </form>
+
+#######################################################################################################################
+Темплейт edit_student.html
+
+{#подключаем темплейт и передаем переменные из контекста#}
+{% include 'my_app/create_student.html' with student_form=student_form message=message%}
+
+#######################################################################################################################

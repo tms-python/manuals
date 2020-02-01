@@ -1,0 +1,136 @@
+1. Создание View во views.py 
+ex.
+from django.shortcuts import render
+def index(request):
+    return render(request, 'my_app/base.html', context={})
+
+#######################################################################################################################
+2. Создание Template в my_app/templates/my_app
+template name: base.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My django app</title>
+</head>
+<body>
+  {% block body %}
+    Hi! I am first django app!
+  {% endblock %}
+</body>
+</html>
+
+#######################################################################################################################
+3. Создание роута в urls.py
+ex.
+
+from django.urls import path
+from .views import (
+    index,
+)
+
+app_name = 'my_app'
+
+urlpatterns = [
+    path('index/', index, name='index'),
+]
+
+#######################################################################################################################
+файл urls.py приложения должен быть подключен в файле
+project/urls.py
+ex.
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('my_app.urls', namespace='my_app')),
+]
+
+
+#######################################################################################################################
+само приложение должно быть подключено в файле
+project/settings.py
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    'my_app',
+]
+
+
+#######################################################################################################################
+создание модели
+my_app/models.py
+
+from django.db import models
+
+# Create your models here.
+
+
+class Student(models.Model):
+    # строковое поле
+    name = models.CharField(
+        max_length=128,
+        verbose_name='Имя',
+    )
+    birthday = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='День рождения'
+    )
+    course = models.IntegerField(
+        verbose_name='Курс'
+    )
+    is_studying = models.BooleanField(
+        default=True,
+        verbose_name='Студент еще не завалил сессию'
+    )
+    comment = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Коментарий',
+        max_length=1024,
+    )
+
+    def __str__(self):
+        return f'Студент {self.name} курс {self.course}'
+
+    class Meta:
+        verbose_name = 'Студент'
+        verbose_name_plural = 'Студенты'
+        ordering = (
+            'name',
+        )
+
+#######################################################################################################################
+создание миграций и миграция в базу данных
+в терминале, переходим в каталог проекта, где находится файл manage.py
+выполняем команды:
+
+python manage.py makemigrations
+python manage.py migrate
+
+
+#######################################################################################################################
+для регистрации модели в административной части
+my_app/admin.py
+
+from django.contrib import admin
+from .models import Student
+# Register your models here.
+
+admin.site.register(Student)
+
+#######################################################################################################################
+для запуска сервера разработки
+
+python manage.py runserver 127.0.0.1:8000
+
+
+

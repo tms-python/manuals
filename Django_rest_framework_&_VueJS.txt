@@ -1,0 +1,77 @@
+в базовом темплейте подключаем библиотеки JS
+
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+#######################################################################################################################
+в базовом темплейте инициализируем axios
+
+<body>
+  {% csrf_token %}
+  <script>
+    let CSRF = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+    let URL_PREFIX = 'http' + '://' + '{{ request.META.HTTP_HOST }}' + '/';
+    let axios_instance = axios.create(
+        {
+            baseURL: URL_PREFIX,
+            headers:{'X-CSRFToken':CSRF},
+        }
+    );
+  </script>
+
+  ...............
+</body>
+#######################################################################################################################
+в файле шаблона создаем экземпляр VueJS а также корневой элемент <div id="app">....</div>
+
+<div id="app" class="col-lg-12">
+    <ul class="list-group">
+      <!-- цикл for в контексте VueJS  v-for="sequence_element, index in sequence"  -->
+
+      <li class="list-group-item" v-for="department, index in department_list">
+        <span> [[ department.sphere_name]] </span>
+        <!-- навешиваем на кнопку действие возможны два варианта @click.prevent="some_method()"
+        либо v-on:click.prevent="some_method()"  -->
+        <button class="btn btn-danger" @click.prevent="delete_department(index)"> del </button>
+      </li>
+    </ul>
+
+
+  </div>
+
+<script>
+
+
+  new Vue({
+    el: '#app',
+    delimiters: ['[[', ']]'],
+    data: function () {
+      return {
+        department_list: []
+      }
+    },
+    methods: {
+      // метод для получения списка объектов
+      get_department_list: function () {
+        axios_instance.get('api/department/').then(response=>{
+          this.department_list = response.data
+        })
+      },
+      delete_department: function (index) {
+        //
+        let element_id = this.department_list[index].id;
+        axios_instance.delete(`api/department/${element_id}`).then(response=>{
+          if (response.status === 204){
+            this.department_list.splice(index, 1)
+          }
+        })
+      }
+    },
+    // хук жизненного цикла экзепляра VueJS. при монтировании экземпляра будут выполнены инструкции внутри хука
+    mounted: function () {
+      // вызываем метод экземпляра для получения списка объектов
+      this.get_department_list()
+    }
+  })
+</script>
+#######################################################################################################################
