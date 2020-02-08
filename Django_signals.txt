@@ -1,0 +1,36 @@
+1. В каталоге приложения, создаем файл signals.py
+Ex.
+
+from django.core.exceptions import ObjectDoesNotExist
+from .models import Profile
+
+# функция, которая будет вызываться при сробатывании сигнала
+# sender - класс модели, которая сгенерировала сигнал
+# instance - экземпляр модели-эмитента
+def create_profile(sender, instance, **kwargs):
+    try:
+        Profile.objects.get(user_id=instance.id)
+    except ObjectDoesNotExist:
+        new_profile = Profile()
+        new_profile.user = instance
+        new_profile.save()
+#######################################################################################################################
+2. В файле __init__.py ашего приложения указываем класс-конфигуратор который используется нашим приложением
+
+default_app_config = 'users_app.apps.UserAppConfig'
+#######################################################################################################################
+3. В файле apps.py подлключаем нашу функцию create_profile из signnals.py
+
+from django.apps import AppConfig
+from django.db.models.signals import post_save
+
+
+class UserAppConfig(AppConfig):
+    name = 'users_app'
+
+    def ready(self):
+        from .signals import create_profile
+        from django.contrib.auth.models import User
+        # подключаем к сигналу функцию: первым аргументом является имя подключаемой функции,
+        # sender - класс модели, которая эмитит сигнал (отправитель сигнала)
+        post_save.connect(create_profile, sender=User)

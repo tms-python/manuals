@@ -1,0 +1,102 @@
+1. Создаем приложение users_app
+#######################################################################################################################
+2. Подключаем приложение в settings.py
+INSTALLED_APPS = [
+    ....
+    'users_app',
+]
+а так же, создаем переменную LOGIN_REDIRECT_URL
+данная переменная, доолжна содержать ссылку, куда будет перенаправлен пользователь, в случае успешной авторизации
+
+# в данном случае, пользоваттель будет перенаправлятся на главную страницу
+LOGIN_REDIRECT_URL = '/'
+#######################################################################################################################
+3. В каталоге приложения users_app создаем каталог для шаблоновЖ
+users_app/templates/users_app
+#######################################################################################################################
+4. В созданном каталоге создаем файл шаблона login.html
+
+{% extends 'shop_app/base.html' %}
+{% load static %}
+{% block title %}
+  Страница авторизации
+{% endblock %}
+{% block body %}
+    <div class="col-lg-4 offset-4">
+      {% if form.errors %}
+          <p>Пароль или логин не верны</p>
+      {% endif %}
+      <form id="login_form" method="post"
+            action="{% url 'users_app:login' %}">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <p><button id="sub_btn" name="submit">Вход</button></p>
+
+        <!-- данное поле обязательно для стандартного LoginView. В value содержится
+        ссылка на страницу, куда будем перенаправлены, после успешной авторизации -->
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
+      </form>
+    </div>
+{% endblock %}
+
+#######################################################################################################################
+5. В приложении users_app создаем файл urls.py
+
+from django.urls import path, reverse_lazy
+from django.contrib.auth.views import LoginView, LogoutView
+
+
+app_name = 'users_app'
+
+urlpatterns = [
+    # template_name = путь к шаблону страницы авторизации
+    path('login/', LoginView.as_view(template_name='users_app/login.html'), name='login'),
+    # next_page = должна содержать url куда будет произведен редирект, после логаута
+    path('logout/', LogoutView.as_view(next_page=reverse_lazy('users_app:login')), name='logout'),
+]
+
+#######################################################################################################################
+6. Подключить файл urls.py приложения users_app в файл urls.py проекта (который в каталоге с settings.py)
+
+urlpatterns = [
+    ......
+    path('user/', include('users_app.urls', namespace='users_app')),
+
+]
+#######################################################################################################################
+
+7. Для проверки прав пользователя, во View используются Mixins (примеси), классы расширающие функционал
+ базового класа View от которого наследуем нашу Вьюху.
+ Ex.
+
+ # если пользователь не авторизован, будет перенаправлен на страницу авторизации
+ from django.contrib.auth.mixins import LoginRequiredMixin
+
+ class IndexView(LoginRequiredMixin, TemplateView):
+    # login_url - должна содержать ссылку на страницу авторизации
+    login_url = reverse_lazy('users_app:login')
+    template_name = 'shop_app/base.html'
+#######################################################################################################################
+
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+
+# class Post(models.Model):
+#     title = models.CharField(max_length=120)
+#     body = models.TextField()
+#     author = models.ForeignKey(
+#         User,
+#         on_delete=models.PROTECT,
+#         verbose_name='Автор'
+#     )
+
+class PostView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = Post
+    template_name = 'post_update.html'
+    fields = ['title', 'body']
+
+    # данный метод относится к UserPassesTestMixin
+    # проверяетя, является ли автором объекта текущий пользователь
+    # должен возвращать булево значениее
+    def test_func(self):
+        obj = self.get_object()
+        return obj.author == self.request.user
