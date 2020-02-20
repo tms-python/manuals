@@ -1,0 +1,42 @@
+console >> bash
+
+virtualenv --python=python3.8 ./venv
+source ./venv/bin/activate
+
+git clone https://github.com/tms-python/shopz23/
+
+cd ./shopz23/SHOP
+
+pip install -r ./requirements.txt
+
+pip install Pillow
+
+web >> add a new web app >> Next >> manual configuration >> python 3.8 >> Next
+
+
+Source code:
+Enter the path to your web app source code  ex. /home/your_username/shopz23/SHOP
+
+Working directory:
+/home/your_username/shopz23/SHOP
+
+
+WSGI configuration file:/var/www/your_username_pythonanywhere_com_wsgi.py
+
+isert into file:
+
+import os
+import sys
+
+path = os.path.expanduser('~/shopz23/SHOP')
+if path not in sys.path:
+    sys.path.append(path)
+
+os.environ['DJANGO_SETTINGS_MODULE'] = 'SHOP.settings'
+
+from django.core.wsgi import get_wsgi_application
+from django.contrib.staticfiles.handlers import StaticFilesHandler
+application = StaticFilesHandler(get_wsgi_application())
+
+
+web >> Reload you_username.pythonanywhere.com
