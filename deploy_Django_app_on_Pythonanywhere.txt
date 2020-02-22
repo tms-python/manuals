@@ -39,4 +39,11 @@ from django.contrib.staticfiles.handlers import StaticFilesHandler
 application = StaticFilesHandler(get_wsgi_application())
 
 
+Virtualenv:
+Use a virtualenv to get different versions of flask, django etc from our default system ones. More info here.
+You need to Reload your web app to activate it; NB - will do nothing if the virtualenv does not exist.
+
+/home/your_username/venv
+
+
 web >> Reload you_username.pythonanywhere.com
