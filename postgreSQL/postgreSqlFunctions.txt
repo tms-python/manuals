@@ -1,0 +1,41 @@
+create function "myproject.notify_trigger"()
+  returns trigger
+language plpgsql
+as $$
+BEGIN
+        IF (tg_op = 'INSERT') THEN
+          PERFORM pg_notify('db_notifications', NEW.action_type || ' '  ||
+                                                'previous data: '  ||
+                                                NEW.old_data || ' '  ||
+                                                'new data: '  ||
+                                                NEW.new_data || ' '  ||
+                                                NEW.change_date);
+          RETURN NEW;
+        ELSE
+          RETURN NULL;
+        end if;
+      END
+$$;
+
+
+
+create function "myproject.test_trigger"()
+  returns trigger
+language plpgsql
+as $$
+BEGIN
+      IF (tg_op = 'INSERT') THEN
+        INSERT INTO public.user_audit (action_type, new_data, change_date) SELECT 'INSERT', new.name, now();
+        RETURN NEW;
+      ELSEIF (tg_op = 'UPDATE') THEN
+        INSERT INTO public.user_audit (action_type, new_data, old_data, change_date) SELECT 'UPDATE', new.name, old.name, now();
+        RETURN NEW;
+      ELSEIF (tg_op = 'DELETE') THEN
+        INSERT INTO public.user_audit (action_type, old_data, change_date) SELECT 'DELETE', old.name, now();
+        RETURN OLD;
+      end if;
+      RETURN NULL;
+    end;
+$$;
+
+
